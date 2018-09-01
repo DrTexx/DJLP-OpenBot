@@ -7,35 +7,64 @@ For those confused by any terminology used in this readme, here are some definit
 _(**note**: click words to expand definitions)_
 
 <details>
+  <summary><b>ATTRIBUTE</b></summary>
+  <p>A value associated with an object which is referenced by name using dotted expressions. For example, if an object o has an attribute a it would be referenced as o.a.</p>
+</details>
+<details>
   <summary><b>CLASS</b></summary>
   <p>A template for creating user-defined objects. Class definitions normally contain method definitions which operate on instances of the class.</p>
 </details>
 <details>
+  <summary><b>METHOD</b></summary>
+  <p>A function which is defined inside a class body. If called as an attribute of an instance of that class, the method will get the instance object as its first argument (which is usually called self). See function and nested scope.</p>
+</details>
+<details>
   <summary><b>OBJECT</b></summary>
   <p>Any data with state (attributes or value) and defined behavior (methods). Also the ultimate base class of any new-style class.</p>
+</details>
+<details>
+  <summary><b>TICK</b></summary>
+  <p>(personal definition): A single execution of everything in a loop.</p>
 </details>
 <br>
 
 _All definitions are provided verbatim the official [python glossary](https://docs.python.org/3/glossary.html)._
 
 ## Purpose
-Powered by MicroPython, DJLP-OpenBot aims to provide a simple way to control DIY industrial robot arms via the functionality of `Robot` classes.
+To provide a simple way to control D.I.Y industrial robots via MicroPython `Robot` objects.
 
-## Robot Class
-All information regarding your robot/s is stored in a `Robot` class. This is essentially the virtual version of your physical robot and it's hardware.
+Robot objects are created from the `Robot()` class defined in DJLP-OpenBot.
 
-By calling objects (e.g. `ROBOT.joints['A'].axes['rot'].motor.get_pos`) or methods (e.g. `ROBOT.joints.axes['rot'].motor.set_pos(90)`) from your `ROBOT`, you can either recieve or set values accordingly.
+## Usage
+### Robot Objects
+All information regarding your robot is stored in a `Robot` object.
+This object is essentially the microproccesors interpretation of a physical robot and it's hardware.
 
-### Physical Robots
-Values are equal to the physical robot itself and if set are set immediantly
+You can gain information about the current state of your robot by calling object attributes
 
-### Idol Robots
-Values are equal to an imaginary idol robot and will be mimiced by the physical robot after x time has passed.
+**EXAMPLE:**
+```python
+ROBOT.joints['A'].axes['rot'].motor.get_pos # get current position of motor
+```
 
-### Defining your robots in MicroPython
-In order to control your robot, you need to create a representation of it in code.
+and you can set new values by executing the object's methods
 
-In short, you need the following:
+**EXAMPLE:**
+```python
+ROBOT.joints.axes['rot'].motor.set_pos(90) # change motors current position to 90 degrees
+```
+
+#### Types of Robots
+##### Physical Robots
+Physical robot objects are intrinsicly linked to physical hardware itself.
+When values are set for physical robots, updates are immediant (such as moving a servo)
+
+##### Idol Robots
+Idol robots are imaginary robots that your robot will attempt to mimic.
+When values are set for idol robots, your physical robot will mimic it's position after _x_ time has passed.
+
+#### Creating Robot Objects in MicroPython
+The following is required to create and control robot objects in MicroPython:
 ```python
 ROBOT_NAME = Robot("ROBOT_NAME") # your robot
 TARGET_NAME = Robot("TARGET_NAME>") # an imaginary 'idol' robot for your robot to copy
@@ -45,33 +74,40 @@ for ITEM in [ROBOT,TARGET]: # for both your physical and target/idol robot...
     ITEM.joints['NEW_JOINT'].axes['NEW_AXIS'] = Axis('NEW_AXIS',INITAL_VALUE,MIN_VALUE,MAX_VALUE,SERVO_OBJECT) # add a new axis to NEW_JOINT and link the servo object
 ```
 
-Once you've done this, you can either enter the main loop or define additional robots/joints/servos/axes/LEDs/sensors/etc.
+Once you've done this, you can either enter the main loop or you can define additional robots/joints/servos/axes/LEDs/sensors/etc.
 
-Once in the main loop routine, you can change the robots target position like this:
+Once the `Main()` loop has been entered, you can change the robots target position like so:
 
-```python TARGET.joints['NEW_JOINT'].axes['NEW_AXIS'].motor.set_pos(NEW_POS)```
+```python
+IDOL.joints['NEW_JOINT'].axes['NEW_AXIS'].motor.set_pos(NEW_POS)
+```
 
-This changes position of the imaginary idol/target robot, which does not inheritly move the robot.
+This will change the position of the `IDOL` robot. Once the current tick has completed (very, very quick) the `Main()` loop will identify that there's a difference between the physical robot and the idol robot. After identifying the difference between the two robots joints and axes, the `update_position()` command is ran every tick until the physical robot matches it's idol.
 
-Instead, during the main loop the physical robot and the idol/target robot are compared; if the physical robot doesn't match all the axes on all the joints of the idol/target robot, the physical robots values will be modified incrementally (along with servos themselves) in order to move towards the idol/target robots position after x amount of time.
+_(**NOTE:** specifying the amount of time taken for the physical robot to go from it's original position to the idol's positon is still currently a work in progress, however this isn't far from completion)_
 
-_(**NOTE:** specifying the duration to copy the idol robot's position is a work in progress, however it's not far from completion)_
+### Position Objects
+`Position` objects contain a set of data to overwrite the IDOL robot's current state (so that all changes can be executed in a single line)
 
-**TL;DR** a routine will be executed to sync the physical motors to their target after x time has passed)
+Position objects are created with the `Position()` class
 
-## Position Class
-Position classes are currently a work in progress, however they are incredibly close to a working state.
+_This class is currently a work in progress, however it's very close to a satisfactory workingg level of completion._
 
-These classes allow for multiple elements of a physical robot to all by mimiced at once, for instance, the robot's joints, servos contained within those joints, any LEDs, any sensors, etc. numerous servos.
+#### Benefit
+Position objects allow for multiple attributes of the idol robot to be changed at once.
 
-I'm underdecided as of yet if positions should be an element of a attribute called 'state' under the robot object.
+This means that, for example, the brightness of an LED, the degree of multiple axes of a joint and a buzzer can be sounded all at once on the IDOL robot (which the physical robot will copy in time).
 
-## Pull-requests?
-Always welcome! I do request, however, that you adhere to PEP-8 standards in order to maintain readability.
+## Pull requests
+Any and all pull requests welcome! I do however ask, that you adhere to PEP-8 standards in order to maintain readability.
 Only one exception applies to this, in being that any variables derived from the `Robot` class must be fully captialised in order to provide the benefit of fast identification.
 
-## Plans for Future Development and Improvement
-- reverse kinemoatics
-- paths
-- sensor support
-- visualisation of robot in a GUI? (lil' ambitious)
+<details>
+  <summary><i>Plans for Future Development and Improvement</i></summary>
+  <ul>
+    <li>paths</li>
+    <li>sensor support</li>
+    <li>visualisation of robot in a GUI? (lil' ambitious)</li>
+    <li>reverse kinematics (very ambitious, will need help or pre-made packages)</li>
+  </ul>
+</details>
