@@ -1,5 +1,5 @@
 # DJLP-OpenBot
-An affordable, accessible, open-source project for creating your own miniture - or larger - industrial robot arm/s.
+An affordable, accessible, open-source project for creating your own miniature - or larger - industrial robot arm/s.
 
 ## Python Terminology
 For those confused by any terminology used in this readme, here are some definitions
@@ -28,7 +28,7 @@ _(**note**: click words to expand definitions)_
 </details>
 <br>
 
-_All definitions are provided verbatim the official [python glossary](https://docs.python.org/3/glossary.html)._
+_All definitions are provided verbatim the official [python glossary](https://docs.python.org/3/glossary.html) unless otherwise specified._
 
 ## Purpose
 To provide a simple way to control D.I.Y industrial robots via MicroPython `Robot` objects.
@@ -38,7 +38,7 @@ Robot objects are created from the `Robot()` class defined in DJLP-OpenBot.
 ## Usage
 ### Robot Objects
 All information regarding your robot is stored in a `Robot` object.
-This object is essentially the microproccesors interpretation of a physical robot and it's hardware.
+This object is essentially the microcontroller's interpretation of a physical robot and it's hardware.
 
 You can gain information about the current state of your robot by calling object attributes
 
@@ -56,8 +56,8 @@ ROBOT.joints.axes['rot'].motor.set_pos(90) # change motors current position to 9
 
 #### Types of Robots
 ##### Physical Robots
-Physical robot objects are intrinsicly linked to physical hardware itself.
-When values are set for physical robots, updates are immediant (such as moving a servo)
+Physical robot objects are intrinsically linked to physical hardware itself.
+When values are set for physical robots, updates are immediate (such as moving a servo)
 
 ##### Idol Robots
 Idol robots are imaginary robots that your robot will attempt to mimic.
@@ -84,14 +84,14 @@ IDOL.joints['NEW_JOINT'].axes['NEW_AXIS'].motor.set_pos(NEW_POS)
 
 This will change the position of the `IDOL` robot. Once the current tick has completed (very, very quick) the `Main()` loop will identify that there's a difference between the physical robot and the idol robot. After identifying the difference between the two robots joints and axes, the `update_position()` command is ran every tick until the physical robot matches it's idol.
 
-_(**NOTE:** specifying the amount of time taken for the physical robot to go from it's original position to the idol's positon is still currently a work in progress, however this isn't far from completion)_
+_(**NOTE:** specifying the amount of time taken for the physical robot to go from it's original position to the idol's position is still currently a work in progress, however this isn't far from completion)_
 
 ### Position Objects
 `Position` objects contain a set of data to overwrite the IDOL robot's current state (so that all changes can be executed in a single line)
 
 Position objects are created with the `Position()` class
 
-_This class is currently a work in progress, however it's very close to a satisfactory workingg level of completion._
+_This class is currently a work in progress, however it's very close to a satisfactory working level of completion._
 
 #### Benefit
 Position objects allow for multiple attributes of the idol robot to be changed at once.
@@ -99,8 +99,8 @@ Position objects allow for multiple attributes of the idol robot to be changed a
 This means that, for example, the brightness of an LED, the degree of multiple axes of a joint and a buzzer can be sounded all at once on the IDOL robot (which the physical robot will copy in time).
 
 ## Pull requests
-Any and all pull requests welcome! I do however ask, that you adhere to PEP-8 standards in order to maintain readability.
-Only one exception applies to this, in being that any variables derived from the `Robot` class must be fully captialised in order to provide the benefit of fast identification.
+All pull requests welcome! I do however ask, that you adhere to PEP-8 standards to maintain readability.
+Only one exception applies to this, in being that any variables derived from the `Robot` class must be fully capitalised to provide the benefit of fast identification.
 
 <details>
   <summary><i>Plans for Future Development and Improvement</i></summary>
