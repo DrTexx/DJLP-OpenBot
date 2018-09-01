@@ -44,7 +44,7 @@ class Robot:
         for joint in ROBOT.joints:
             joint_pos = ROBOT.joints[joint].get_pos
             move_info = self.movement_calc(ROBOT.joints[joint],move_duration)
-            print("{}:DIST_FROM:[{:>4}] ".format(ROBOT.joints[joint].get_name,move_info['target_dist']),end="")
+            print("{}:DIST_FROM:[{:>4}]:STEP_TIME:[{:>4}]:STEP_COUNT:[{:>4}] ".format(ROBOT.joints[joint].get_name,move_info['target_dist'],move_info['step_time'],move_info['step_count']),end="")
             if move_info['target_dist'] is not 0:
                 if move_info['target_dist'] < 0:
                     step_pos = jointpos - move_info['step_dist']
@@ -59,7 +59,8 @@ class Robot:
         step_count = move_duration//joint_obj.get_hardware.get_step_time # total number of steps taken from target A to target B
         target_dist = abs(joint_obj.get_pos - joint_obj.get_new_pos) # distance from the target relative to current position
         step_dist = target_dist / step_count # distance per step
-        return({'step_count': step_count, 'target_dist': target_dist, 'step_dist': step_dist})
+        step_time = move_duration / step_count # TODO: check this is correct
+        return({'step_count': step_count, 'target_dist': target_dist, 'step_dist': step_dist, 'step_time': step_time})
 class Hardware:
     def __init__(self,is_physical):
         state_message(is_physical,"...running on hardware","running as simulation")
@@ -90,8 +91,7 @@ class Hardware:
             print("SERVO:[{:<5}],POS[{:<3}],DUTY[{:<3}]".format(self.get_name,self.get_pos,self.get_duty),end="")
             if (self.is_physical): self.pwm.duty(int(self.get_duty))
         def set_new_pos(self,new_pos):
-            if new_pos < self.get_pos_max and new_pos > self.get_pos_min:
-                self.get_new_pos = new_pos
+            self.get_new_pos = new_pos
     class NewLed:
         def __init__(self,name,pin_num,initial_state,is_physical):
             self.get_name = name
@@ -137,12 +137,6 @@ ROBOT.joints['B'] = ROBOT.NewJoint('B',90,0,180,hardware.servos['B']) # create j
 ROBOT.joints['C'] = ROBOT.NewJoint('C',90,0,180,hardware.servos['C']) # create joint C (for all base main_classes)
 
 ROBOT.joints['A'].get_hardware.set_new_pos(40)
-#ROBOT.joints['A'].set_pos(40)
-#ROBOT.joints['A'].set_new_pos(40)
-
-# SCRAPS
-pause_between_targets = 1 # pause between moving to another target (in seconds)
-# SCRAPS
 
 # function to update values
 # if item[0] == item[1]: pass #print("all is well :)")
