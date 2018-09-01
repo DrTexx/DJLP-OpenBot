@@ -137,6 +137,8 @@ ROBOT.joints['B'] = ROBOT.NewJoint('B',90,0,180,hardware.servos['B']) # create j
 ROBOT.joints['C'] = ROBOT.NewJoint('C',90,0,180,hardware.servos['C']) # create joint C (for all base main_classes)
 
 ROBOT.joints['A'].get_hardware.set_new_pos(40)
+#ROBOT.joints['A'].set_pos(40)
+#ROBOT.joints['A'].set_new_pos(40)
 
 # SCRAPS
 pause_between_targets = 1 # pause between moving to another target (in seconds)
@@ -157,6 +159,9 @@ def main(time_tracker):
     time_tracker.check()
     if time_tracker.elapsed > 10: exit_loop = True
     ROBOT.sync(time_tracker,time.time() + 2) # update all hardwares such as servos (pass on time_tracker)
+    for joint in ROBOT.joints:
+        print("SERVO:NOW:[{:>3}],SERVO:NEW:[{:>3}]".format(ROBOT.joints[joint].get_hardware.get_pos,
+                                               ROBOT.joints[joint].get_hardware.get_new_pos))
     
 ###### START 'ER UP!!! ######
 time_tracker = TimeElapsedTracker()
