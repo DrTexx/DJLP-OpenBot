@@ -20,6 +20,8 @@ def sublist_gen(li, cols=2):
         stop = start + len(li[i::cols])
         yield li[start:stop]
         start = stop
+def println(string):
+    print(string,end=" ")
 
 # -- CLASS DEFINITIONS --
 class Robot:
@@ -42,25 +44,21 @@ class Robot:
         # TODO: make this work
         print("syncing...",end=" ")
         for joint in ROBOT.joints:
-            joint_pos = ROBOT.joints[joint].get_pos
-            move_info = self.movement_calc(ROBOT.joints[joint],move_duration)
-            print("{}:DIST_FROM:[{:>4}]:STEP_TIME:[{:>4}]:STEP_COUNT:[{:>4}] ".format(ROBOT.joints[joint].get_name,move_info['target_dist'],move_info['step_time'],move_info['step_count']),end="")
+            ROBOT.joints[joint].movement.calc()
+            print("{}:DIST_FROM:[{:>4}]:STEP_TIME:[{:>4}]:STEP_COUNT:[{:>4}] ".format(ROBOT.joints[joint].movement.get_get_name,move_info['target_dist'],move_info['step_time'],move_info['step_count']),end="")
             if move_info['target_dist'] is not 0:
+                print("target dist is not 0")
                 if move_info['target_dist'] < 0:
-                    step_pos = jointpos - move_info['step_dist']
+                    step_pos = joint_pos - move_info['step_dist']
                 elif move_info['target_dist'] > 0:
-                    step_pos = jointpos + move_info['step_dist']
+                    step_pos = joint_pos + move_info['step_dist']
+                print(step_pos)
                 ROBOT.joints[joint].get_hardware.set_pos(int(step_pos)) # add an amount calculated
+            else:
+                print("target dist = 0")
             
             time.sleep(ROBOT.joints[joint].get_hardware.get_step_time)
         print()
-    def movement_calc(self,joint_obj,reach_by):
-        move_duration = reach_by - time.time()
-        step_count = move_duration//joint_obj.get_hardware.get_step_time # total number of steps taken from target A to target B
-        target_dist = abs(joint_obj.get_pos - joint_obj.get_new_pos) # distance from the target relative to current position
-        step_dist = target_dist / step_count # distance per step
-        step_time = move_duration / step_count # TODO: check this is correct
-        return({'step_count': step_count, 'target_dist': target_dist, 'step_dist': step_dist, 'step_time': step_time})
 class Hardware:
     def __init__(self,is_physical):
         state_message(is_physical,"...running on hardware","running as simulation")
@@ -84,14 +82,54 @@ class Hardware:
             if (self.is_physical):
                 self.pin = machine.Pin(self.get_pin_num)
                 self.pwm = machine.PWM(self.pin,freq=self.get_freq)
+        class NewMovement:
+            def __init__(self,time_tracker,move_duration,before_pos,after_pos,hardware):
+                #TODO: complete this
+                self.get_before_pos = before_pos
+                self.get_during_pos = before_pos
+                self.get_after_pos = after_pos
+                self.get_dist_from_pos = after_pos-before_pos #TODO: check this is correct
+                self.get_hardware = hardware
+                self.get_before_time = time.time()
+                self.get_after_time = time.time() + move_duration
+                # CALCULATIONS (run once per movement created)
+                println("calculate duration...")
+                self.get_duration_time = self.get_after_time - self.get_before_time # during movement: no change
+                println(self.get_duration_time)
+                println("calculate total step count...")
+                # total number of ticks required to reach target by x seconds (dependent on servo's step time)
+                self.get_total_steps = self.get_duration_time//self.get_hardware.get_step_time # total number of steps taken from target A to target B
+                println(self.get_total_steps)
+                # set how many step are left to take
+                println("setting steps remaining...")
+                self.get_steps_remaining = self.get_total_steps # decrease this every tick! (CHANGES!)
+                println(self.get_steps_remaining)
+                # used for outputting to terminal, shouldn't be used in loops!!!
+                println("calculate target distance...")
+                self.get_target_dist = abs(self.get_hardware.get_pos - self.get_after_pos) # distance from the target relative to current position
+                println(self.get_target_dist)
+                println("calculate distance per step...")
+                self.get_dist_per_step = self.get_target_dist / self.get_total_steps # distance per step
+                println(self.get_dist_per_step)
+                # time between each step should be servos step time, so motion as smooth as possible
+                self.time_per_step = self.get_hardware.get_step_time
+                return({'move_duration': move_duration,'step_count': step_count, 'target_dist': target_dist, 'step_dist': step_dist, 'step_time': step_time})
+            def calc(self):
+                pass # for recalculation during movement, perhaps better to set a reducing attribute of self in main loop or in run?
+            def run(self):
+                if self.get_steps_taken == self.get_total_steps:
+                    pass # don't do stuff
+                    pass # delete the movement attribute
+                # more stuff
+                # delete the movement attribute
+                self.get_step_ticks += 1 # add a step to the counter (for determining when to stop)
+                return("step taken")
         def set_pos(self,pos):
             self.get_pos = pos
             self.set_duty(valmap(self.get_pos,0,180,40,115))
         def set_duty(self,duty):
             print("SERVO:[{:<5}],POS[{:<3}],DUTY[{:<3}]".format(self.get_name,self.get_pos,self.get_duty),end="")
             if (self.is_physical): self.pwm.duty(int(self.get_duty))
-        def set_new_pos(self,new_pos):
-            self.get_new_pos = new_pos
     class NewLed:
         def __init__(self,name,pin_num,initial_state,is_physical):
             self.get_name = name
@@ -136,8 +174,6 @@ ROBOT.joints['A'] = ROBOT.NewJoint('A',90,0,180,hardware.servos['A']) # create j
 ROBOT.joints['B'] = ROBOT.NewJoint('B',90,0,180,hardware.servos['B']) # create joint B (for all base main_classes)
 ROBOT.joints['C'] = ROBOT.NewJoint('C',90,0,180,hardware.servos['C']) # create joint C (for all base main_classes)
 
-ROBOT.joints['A'].get_hardware.set_new_pos(40)
-
 # function to update values
 # if item[0] == item[1]: pass #print("all is well :)")
 # else: nonmatches += 1; print("SOMETHING DOESN'T MATCH >:c")
@@ -152,6 +188,15 @@ def main(time_tracker):
     print("[{:<4}] ".format(int(time_tracker.elapsed)),end="")
     time_tracker.check()
     if time_tracker.elapsed > 10: exit_loop = True
+    
+    first = ROBOT.joints['A'].get_hardware.get_pos
+    last = 10
+    ROBOT.joints['A'].movement = ROBOT.joints['A'].get_hardware.NewMovement(time_tracker,2,first,last,ROBOT.joints['A'].get_hardware)
+    ROBOT.joints['A'].movement.run()
+    #REQUIRES A CALC (add within movement object)
+    ROBOT.joints['A'].movement.calc()
+
+    
     ROBOT.sync(time_tracker,time.time() + 2) # update all hardwares such as servos (pass on time_tracker)
     for joint in ROBOT.joints:
         print("SERVO:NOW:[{:>3}],SERVO:NEW:[{:>3}]".format(ROBOT.joints[joint].get_hardware.get_pos,
