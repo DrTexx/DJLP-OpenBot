@@ -33,10 +33,12 @@ def println(*args,brak=False):
     
 ''' -- ROBOT CLASS DEFINITIONS -- '''
 class Robot:
-    def __init__(self,name):
+    def __init__(self,name,default_move_duration=1):
         self.name = name
         self.joints = {}
+        self.leds = {}
         self.positions = {}
+        self.move_duration = default_move_duration
     class Joint:
         def __init__(self,name,hardware):
             self.get_name = name
@@ -45,8 +47,8 @@ class Robot:
         def __init__(self,joints):
             for joint in joints:
                 pass # TODO: make this work
-    def sync(self,time_tracker,move_duration):
-        # TODO: make this work
+    def sync(self,time_tracker,move_duration_override):
+        # TODO: make move_duration_override have an effect on all movements
         print("syncing...",end=" ")
         for joint in ROBOT.joints:
             if hasattr(ROBOT.joints[joint], 'movement'): # if this joint has a movement attribute
@@ -55,7 +57,7 @@ class Robot:
     def home(self,joints):
         for joint in joints:
             joint = joints[joint]
-            joint.movement = joint.get_hardware.NewMovement(time_tracker,1,joint.get_hardware.get_pos,joint.get_hardware.get_home_pos,joint.get_hardware)
+            joint.movement = joint.get_hardware.NewMovement(time_tracker,self.move_duration,joint.get_hardware.get_pos,joint.get_hardware.get_home_pos,joint.get_hardware)
 
 ''' -- HARDWARE CLASS DEFINITIONS -- '''
 class Hardware:
@@ -136,11 +138,11 @@ class Hardware:
             self.get_duty = duty
             if hardware.is_physical: self.pwm.duty(int(self.get_duty))
             println("SERVO:[{:<5}],POS[{:<5}],DUTY[{:<5}]".format(self.get_name,round(self.get_pos,3),self.get_duty))
-    class NewLed:
+    class Led:
         def __init__(self,name,pin_num,initial_state):
             self.get_name = name
             self.get_pin_num = pin_num
-            self.get_initial_state = initial_states
+            self.get_initial_state = initial_state
             self.get_state = initial_state
             if (hardware.is_physical):
                 self.get_pin_object = machine.Pin(self.get_pin_num, machine.Pin.OUT)
@@ -168,52 +170,67 @@ class TimeElapsedTracker:
         return(self.elapsed)
 
 # ---- MAIN SETUP ----
-ROBOT = Robot("ROBOT") # create a new robot class
+default_move_duration = 1 # specify default move duration between points
+ROBOT = Robot("ROBOT",default_move_duration=default_move_duration) # create a new robot class
 # define physical hardware
 hardware = Hardware(is_physical) # set hardware as physical or code simulated
 hardware.servos['A'] = Hardware.Servo("A",4,50,0.02,[90,0,180])
 hardware.servos['B'] = Hardware.Servo("B",5,50,0.02,[90,0,180])
 hardware.servos['C'] = Hardware.Servo("C",15,50,0.02,[90,0,180])
+hardware.servos['D'] = Hardware.Servo("D",18,50,0.02,[90,0,180])
+#hardware.leds['A'] = Hardware.Led('A',35,False)
 ROBOT.joints['A'] = Robot.Joint('A',hardware.servos['A'])
 ROBOT.joints['B'] = Robot.Joint('B',hardware.servos['B'])
 ROBOT.joints['C'] = Robot.Joint('C',hardware.servos['C'])
+ROBOT.joints['D'] = Robot.Joint('D',hardware.servos['C'])
+#ROBOT.leds['A'] = hardware.leds['A']
+# put ROBOT's attributes in a more accessible dictionary to shorten code
 joints = {'A': ROBOT.joints['A'],
           'B': ROBOT.joints['B'],
-          'C': ROBOT.joints['C']}
+          'C': ROBOT.joints['C'],
+          'D': ROBOT.joints['D']}
 servos = {'A': joints['A'].get_hardware,
           'B': joints['B'].get_hardware,
-          'C': joints['C'].get_hardware}
+          'C': joints['C'].get_hardware,
+          'D': joints['D'].get_hardware}
 
-#hardware.add_servo("B",5,50,0.02,[0,0,180],hardware.is_physical)
-#ROBOT.add_joint('A',90,0,180)
-#ROBOT = Robot("ROBOT") # create a robot class
-#ROBOT.joints['A'] = ROBOT.Joint() # create joint A (for all base main_classes)
-    
 #---primary loop---#
 def main():
     global time_tracker
+    global move1_sent
     global home_command_sent
     time_tracker.check(print_elapsed=True) # set and print time elapsed
-    if time_tracker.elapsed > 7: global end_loop; end_loop = True # exit if time elapsed > 10
-    if time_tracker.elapsed > 3 and home_command_sent is False:
+    if time_tracker.elapsed > 9:
+        global end_loop; end_loop = True # exit if time elapsed > 10
+    if time_tracker.elapsed > 6 and home_command_sent is False:
         ROBOT.home(joints)
         home_command_sent = True
+    if time_tracker.elapsed > 3 and move1_sent is False:
+        joints['A'].movement = servos['A'].NewMovement(time_tracker,ROBOT.move_duration,servos['A'].get_pos,150,ROBOT.joints['A'].get_hardware)
+        joints['B'].movement = servos['B'].NewMovement(time_tracker,ROBOT.move_duration,servos['B'].get_pos,150,ROBOT.joints['B'].get_hardware)
+        joints['C'].movement = servos['C'].NewMovement(time_tracker,ROBOT.move_duration,servos['C'].get_pos,20,ROBOT.joints['C'].get_hardware)
+        joints['D'].movement = servos['D'].NewMovement(time_tracker,ROBOT.move_duration,servos['D'].get_pos,170,ROBOT.joints['D'].get_hardware)
+        move1_sent = True
     ROBOT.sync(time_tracker,time.time() + 2) # update all hardwares such as servos (pass on time_tracker)
     
 ###### START 'ER UP!!! ######
 time_tracker = TimeElapsedTracker()
 print("THIS SHOULD ALWAYS BE THE FIRST THING TO PRINT!!!")
-joints['A'].movement = servos['A'].NewMovement(time_tracker,1,servos['A'].get_pos,0,ROBOT.joints['A'].get_hardware)
-joints['B'].movement = servos['B'].NewMovement(time_tracker,1,servos['B'].get_pos,180,ROBOT.joints['B'].get_hardware)
-joints['C'].movement = servos['C'].NewMovement(time_tracker,1,servos['C'].get_pos,20,ROBOT.joints['C'].get_hardware)
+joints['A'].movement = servos['A'].NewMovement(time_tracker,ROBOT.move_duration,servos['A'].get_pos,0,ROBOT.joints['A'].get_hardware)
+joints['B'].movement = servos['B'].NewMovement(time_tracker,ROBOT.move_duration,servos['B'].get_pos,180,ROBOT.joints['B'].get_hardware)
+joints['C'].movement = servos['C'].NewMovement(time_tracker,ROBOT.move_duration,servos['C'].get_pos,0,ROBOT.joints['C'].get_hardware)
+joints['D'].movement = servos['D'].NewMovement(time_tracker,ROBOT.move_duration,servos['D'].get_pos,180,ROBOT.joints['D'].get_hardware)
 
 time_tracker.begin()
 
 end_loop = False
+move1_sent = False
 home_command_sent = False
 while not end_loop: main()
 
 time_tracker.stop
 
-print("ROBOT JOINT A POSITION:",ROBOT.joints['A'].get_hardware.get_pos)
+print("FINAL ROBOT JOINT POSITIONS:")
+for joint in joints:
+    print("JOINT|{:<3} = {}".format(joint,ROBOT.joints['A'].get_hardware.get_pos))
 print("goodbye!")
