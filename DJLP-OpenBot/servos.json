@@ -1,0 +1,58 @@
+{
+    "A": {
+        "name": "A",
+        "pin_num": 4,
+        "pos": 8.225395065404308e-71,
+        "pos_home": 90,
+        "specs": {
+            "freq": 50,
+            "step_time": 0.02,
+            "hard_min": 0,
+            "hard_max": 180,
+            "duty_min": 32,
+            "duty_max": 130
+        }
+    },
+    "B": {
+        "name": "B",
+        "pin_num": 5,
+        "pos": 179.99999999999932,
+        "pos_home": 90,
+        "specs": {
+            "freq": 50,
+            "step_time": 0.02,
+            "hard_min": 0,
+            "hard_max": 180,
+            "duty_min": 32,
+            "duty_max": 130
+        }
+    },
+    "C": {
+        "name": "C",
+        "pin_num": 15,
+        "pos": 8.221969244885646e-71,
+        "pos_home": 90,
+        "specs": {
+            "freq": 50,
+            "step_time": 0.02,
+            "hard_min": 0,
+            "hard_max": 180,
+            "duty_min": 32,
+            "duty_max": 130
+        }
+    },
+    "D": {
+        "name": "D",
+        "pin_num": 18,
+        "pos": 179.99999999999932,
+        "pos_home": 90,
+        "specs": {
+            "freq": 50,
+            "step_time": 0.02,
+            "hard_min": 0,
+            "hard_max": 180,
+            "duty_min": 32,
+            "duty_max": 130
+        }
+    }
+}

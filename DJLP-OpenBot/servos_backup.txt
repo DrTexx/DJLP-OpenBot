@@ -1,0 +1,34 @@
+{
+    "A": {
+        "name": "A",
+        "pin_num": 4,
+        "pos": 90,
+        "pos_home": 90,
+        "specs": {
+            "freq": 50,
+            "step_time": 0.02,
+            "hard_min": 0,
+            "hard_max": 180,
+            "duty_min":32,
+            "duty_max":130
+        }
+    },
+    "B": {
+        "name": "B",
+        "pin_num": 5,
+        "pos": 90,
+        "pos_home": 90,
+        "specs": {"freq": 50,"step_time": 0.02,"hard_min": 0,"hard_max": 180,"duty_min":32,"duty_max":130}},
+    "C": {
+        "name": "C",
+        "pin_num": 15,
+        "pos": 90,
+        "pos_home": 90,
+        "specs": {"freq": 50,"step_time": 0.02,"hard_min": 0,"hard_max": 180,"duty_min":32,"duty_max":130}},
+    "D": {
+        "name": "D",
+        "pin_num": 18,
+        "pos": 90,
+        "pos_home": 90,
+        "specs": {"freq": 50,"step_time": 0.02,"hard_min": 0,"hard_max": 180,"duty_min":32,"duty_max":130}}
+}
