@@ -59,6 +59,8 @@ def print_servo_pos_data(all_servos,ROBOT_OBJ):
         
 ''' -- VARIABLE DEFINITONS -- '''
 servos_json_filename = 'servos.json'
+speed_scale = 2
+speed_pause = 0.5
 
 ''' -- ROBOT CLASS DEFINITIONS -- '''
 class Robot:
@@ -98,6 +100,10 @@ class Robot:
         with open(json_filename,'w') as f:
             if hardware.is_physical: json.dump(self.servos_dict, f)
             else: json.dump(self.servos_dict, f, indent = 4,ensure_ascii = False)
+    def set_joints(self,positions):
+        for item in positions:
+            ROBOT.joints[item].movement = ROBOT.joints[item].get_hw.NewMovement(ROBOT,positions[item],ROBOT.joints[item].get_hw)
+
             
 ''' -- HARDWARE CLASS DEFINITIONS -- '''
 class Hardware:
@@ -231,7 +237,7 @@ class TimeElapsedTracker:
 
 # ---- MAIN SETUP ----
 tt = TimeElapsedTracker()
-ROBOT = Robot("ROBOT",tt,default_move_duration=1) # create the robot object
+ROBOT = Robot("ROBOT",tt,default_move_duration=0.25*speed_scale) # create the robot object
 # define physical hardware
 hardware = Hardware(is_physical) # set hardware as physical or code simulated
 # load servos stored in json into hardware object as well as a robot's servo_dict
@@ -270,24 +276,25 @@ def main():
     global m1_sent
     global m2_sent
     global m3_sent
+    global m4_sent
     global end_loop
     ROBOT.tt.check(print_elapsed=True) # set and print time elapsed
-    if ROBOT.tt.elapsed > 12:
+    if ROBOT.tt.elapsed > (7+speed_pause)*speed_scale:
         end_loop = True # exit if time elapsed > 10
-    elif ROBOT.tt.elapsed > 9 and m3_sent is False:
+    elif ROBOT.tt.elapsed > (5+speed_pause)*speed_scale and m4_sent is False:
         ROBOT.home(ROBOT.joints)
+        m4_sent = True
+    elif ROBOT.tt.elapsed > (4+speed_pause)*speed_scale and m3_sent is False:
+        positions = {'A': 90,'B': 90,'C': 90,'D': 90}
+        ROBOT.set_joints(positions)
         m3_sent = True
-    elif ROBOT.tt.elapsed > 6 and m2_sent is False:
-        j_a.movement = s_a.NewMovement(ROBOT,150,s_a)
-        j_b.movement = s_b.NewMovement(ROBOT,150,s_b)
-        j_c.movement = s_c.NewMovement(ROBOT,20,s_c)
-        j_d.movement = s_d.NewMovement(ROBOT,170,s_d)
+    elif ROBOT.tt.elapsed > (3+speed_pause)*speed_scale and m2_sent is False:
+        positions = {'A': 150,'B': 70,'C': 20,'D': 170}
+        ROBOT.set_joints(positions)
         m2_sent = True
-    elif ROBOT.tt.elapsed > 3 and m1_sent is False:
-        j_a.movement = s_a.NewMovement(ROBOT,0,s_a)
-        j_b.movement = s_b.NewMovement(ROBOT,180,s_b)
-        j_c.movement = s_c.NewMovement(ROBOT,0,s_c)
-        j_d.movement = s_d.NewMovement(ROBOT,180,s_d)
+    elif ROBOT.tt.elapsed > (2+speed_pause)*speed_scale and m1_sent is False:
+        positions = {'A': 0,'B': 120,'C': 0,'D': 180}
+        ROBOT.set_joints(positions)
         m1_sent = True
     elif ROBOT.tt.elapsed > 0 and move0_sent is False:
         ROBOT.home(ROBOT.joints)
@@ -304,6 +311,7 @@ move0_sent = False
 m1_sent = False
 m2_sent = False
 m3_sent = False
+m4_sent = False
 while not end_loop: main()
 
 ROBOT.tt.stop
