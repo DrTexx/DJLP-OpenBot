@@ -31,7 +31,7 @@
         "name": "C",
         "pin_num": 15,
         "pos": 140,
-        "pos_home": 140,
+        "pos_home": 90,
         "specs": {
             "freq": 50,
             "step_time": 0.02,

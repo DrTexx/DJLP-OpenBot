@@ -59,8 +59,8 @@ def print_servo_pos_data(all_servos,ROBOT_OBJ):
         
 ''' -- VARIABLE DEFINITONS -- '''
 servos_json_filename = 'servos.json'
-speed_scale = 2
-speed_pause = 0.5
+speed_scale = 4 # normal duration is 0.25
+pause_scale = 0.5
 
 ''' -- ROBOT CLASS DEFINITIONS -- '''
 class Robot:
@@ -80,17 +80,25 @@ class Robot:
         def __init__(self,joints):
             for joint in joints:
                 pass # TODO: make this work
-    def sync(self,move_duration_override):
+    def sync(self,speed_scale_override=1,print_break=True):
         # TODO: make move_duration_override have an effect on all movements
-        print("syncing...",end=" ")
+        #print("syncing...",end=" ")
         for joint in ROBOT.joints:
             if hasattr(ROBOT.joints[joint], 'movement'): # if this joint has a movement attribute
-                ROBOT.joints[joint].movement.run() # this tick, increment servos a bit to target
-        print()
-    def home(self,joints):
+                ROBOT.joints[joint].movement.run(run_speed_scale=speed_scale_override) # this tick, increment servos a bit to target
+        if print_break: print()
+    def syncloop(self,sync_scale_override):
+        at_pos = False
+        while not at_pos:
+            self.sync(sync_scale_override=sync_scale_override)
+    def home(self,joints,hardhome=False):
         for joint in joints:
             joint = joints[joint]
-            joint.movement = joint.get_hw.NewMovement(self,joint.get_hw.get_home_pos,joint.get_hw)
+            if hardhome:
+                new_pos = joint.get_hw.get_hard_home
+            else:
+                new_pos = joint.get_hw.get_home_pos
+            joint.movement = joint.get_hw.NewMovement(self,new_pos,joint.get_hw)
     def update_json(self,json_filename):
         for servo in hardware.servos:
             _servo = hardware.servos[servo]
@@ -103,7 +111,6 @@ class Robot:
     def set_joints(self,positions):
         for item in positions:
             ROBOT.joints[item].movement = ROBOT.joints[item].get_hw.NewMovement(ROBOT,positions[item],ROBOT.joints[item].get_hw)
-
             
 ''' -- HARDWARE CLASS DEFINITIONS -- '''
 class Hardware:
@@ -123,6 +130,7 @@ class Hardware:
             self.get_step_time = self.servo_dict['specs']['step_time']
             self.get_pos_min = self.servo_dict['specs']['hard_min'] # make this have an effect
             self.get_pos_max = self.servo_dict['specs']['hard_max'] # make this have an effect
+            self.get_hard_home = self.servo_dict['specs']['hard_max'] / 2
             self.get_duty_min = self.servo_dict['specs']['duty_min'] # make this have an effect
             self.get_duty_max = self.servo_dict['specs']['duty_max'] # make this have an effect
             self.get_duty = valmap(self.get_pos,
@@ -134,7 +142,7 @@ class Hardware:
                 self.pin = machine.Pin(self.get_pin_num)
                 self.pwm = machine.PWM(self.pin,freq=self.get_freq)
         class NewMovement:
-            def __init__(self,robot_obj,after_pos,hardware):
+            def __init__(self,robot_obj,after_pos,hardware,print_break=False):
                 #TODO: complete this
                 self.move_duration = robot_obj.move_duration
                 self.get_before_pos = hardware.get_pos
@@ -154,6 +162,9 @@ class Hardware:
                 # set how many step are left to take
                 self.get_steps_remaining = self.get_total_steps # decrease this every tick! (CHANGES!)
                 println("set steps remaining: ",self.get_steps_remaining,brak=True)
+                # set how much time is left
+                self.get_time_remaining = self.get_duration_time
+                println("set time remaining: ",self.get_time_remaining,brak=True)
                 # used for outputting to terminal, shouldn't be used in loops!!!
                 self.get_target_dist = abs(self.get_hw.get_pos - self.get_after_pos) # distance from the target relative to current position
                 println("target_dist: ",self.get_target_dist,brak=True)
@@ -161,12 +172,12 @@ class Hardware:
                 println("dist_per_step: ",self.get_dist_per_step,brak=True)
                 # time between each step should be servos step time, so motion as smooth as possible
                 self.get_time_per_step = self.get_hw.get_step_time
-                print()
+                if print_break: print()
+                else: print("already there.",end="")
             def calc(self):
                 pass # for recalculation during movement, perhaps better to set a reducing attribute of self in main loop or in run?
-            def run(self):
-                println("steps remaining: " + str(self.get_steps_remaining), brak=True)
-                println("time remaining: " + str(self.get_time_remaining), brak=True)
+            def run(self,run_speed_scale=1,print_status=False): # ss is step scale
+                rss = run_speed_scale
                 if self.get_steps_remaining <= 0:
                     # set time remaining to 0
                     self.get_time_remaining = 0
@@ -177,22 +188,23 @@ class Hardware:
                 else:
                     # do stuff to move servos
                     if self.get_before_pos < self.get_after_pos:
-                        self.get_hw.set_pos(self.get_hw.get_pos + self.get_dist_per_step)
+                        self.get_hw.set_pos(self.get_hw.get_pos + (self.get_dist_per_step*rss))
                     if self.get_before_pos > self.get_after_pos:
-                        self.get_hw.set_pos(self.get_hw.get_pos - self.get_dist_per_step)
+                        self.get_hw.set_pos(self.get_hw.get_pos - (self.get_dist_per_step*rss))
                     # increment values needed for tracking
-                    self.get_steps_remaining -= 1 # remove 1 from steps remaining (for determining when to stop)
-                    self.get_time_remaining -= self.get_time_per_step
+                    self.get_steps_remaining -= (1*rss) # remove 1 from steps remaining (for determining when to stop)
+                    self.get_time_remaining -= (self.get_time_per_step*rss)
+                    if print_status is True: println("step-left:{:<5} | time-left:{:<5}".format(round(self.get_steps_remaining,5),round(self.get_time_remaining,5)),brak=True)
                     #time.sleep(self.get_time_per_step)
-        def set_pos(self,pos):
+        def set_pos(self,pos,print_move=True):
             # TODO: consider min/max values before settings
             self.get_pos = pos
             self.servo_dict['pos'] = pos # needs to be updated when changed
-            self.set_duty(valmap(self.get_pos,0,180,32,130))
-        def set_duty(self,duty):
+            self.set_duty(valmap(self.get_pos,0,180,32,130),print_move=print_move)
+        def set_duty(self,duty,print_move=False):
             self.get_duty = duty
             if hardware.is_physical: self.pwm.duty(int(self.get_duty))
-            println("SERVO:[{:<5}],POS[{:<5}],DUTY[{:<5}]".format(self.get_name,round(self.get_pos,3),self.get_duty))
+            if print_move: println("['{:<1}'|P:{:<3}|D:{:<3}]".format(self.get_name,round(self.get_pos),self.get_duty))
         def force_update_dict(self):
             self.servo_dict['name'] = self.get_name
             self.servo_dict['pin_num'] = self.get_pin_num
@@ -237,7 +249,7 @@ class TimeElapsedTracker:
 
 # ---- MAIN SETUP ----
 tt = TimeElapsedTracker()
-ROBOT = Robot("ROBOT",tt,default_move_duration=0.25*speed_scale) # create the robot object
+ROBOT = Robot("ROBOT",tt,default_move_duration=1*speed_scale) # create the robot object
 # define physical hardware
 hardware = Hardware(is_physical) # set hardware as physical or code simulated
 # load servos stored in json into hardware object as well as a robot's servo_dict
@@ -279,27 +291,26 @@ def main():
     global m4_sent
     global end_loop
     ROBOT.tt.check(print_elapsed=True) # set and print time elapsed
-    if ROBOT.tt.elapsed > (7+speed_pause)*speed_scale:
+    #timeline = ['time elapsed', 'condition for completion', 'robot joints and positions']
+    #for keyframe in timeline:
+    if ROBOT.tt.elapsed > 5*speed_scale:
         end_loop = True # exit if time elapsed > 10
-    elif ROBOT.tt.elapsed > (5+speed_pause)*speed_scale and m4_sent is False:
+    elif ROBOT.tt.elapsed > 4*speed_scale and m4_sent is False:
         ROBOT.home(ROBOT.joints)
         m4_sent = True
-    elif ROBOT.tt.elapsed > (4+speed_pause)*speed_scale and m3_sent is False:
-        positions = {'A': 90,'B': 90,'C': 90,'D': 90}
-        ROBOT.set_joints(positions)
+    elif ROBOT.tt.elapsed > 3*speed_scale and m3_sent is False:
+        ROBOT.set_joints({'A': 90,'B': 90,'C': 90,'D': 90})
         m3_sent = True
-    elif ROBOT.tt.elapsed > (3+speed_pause)*speed_scale and m2_sent is False:
-        positions = {'A': 150,'B': 70,'C': 20,'D': 170}
-        ROBOT.set_joints(positions)
+    elif ROBOT.tt.elapsed > 2*speed_scale and m2_sent is False:
+        ROBOT.set_joints({'A': 150,'B': 70,'C': 20,'D': 170})
         m2_sent = True
-    elif ROBOT.tt.elapsed > (2+speed_pause)*speed_scale and m1_sent is False:
-        positions = {'A': 0,'B': 120,'C': 0,'D': 180}
-        ROBOT.set_joints(positions)
+    elif ROBOT.tt.elapsed > 1*speed_scale and m1_sent is False:
+        ROBOT.set_joints({'A': 0,'B': 120,'C': 0,'D': 180})
         m1_sent = True
     elif ROBOT.tt.elapsed > 0 and move0_sent is False:
         ROBOT.home(ROBOT.joints)
         move0_sent = True
-    ROBOT.sync(time.time() + ROBOT.move_duration) # update all hardwares such as servos (pass on time_tracker)
+    ROBOT.sync(speed_scale_override=speed_scale) # update all hardwares such as servos (pass on time_tracker)
     
 ###### START 'ER UP!!! ######
 print("THIS SHOULD ALWAYS BE THE FIRST THING TO PRINT!!!")
