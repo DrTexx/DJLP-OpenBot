@@ -4,5 +4,6 @@
     "dur_scale": 2,
     "pause_scale": 0.5,
     "print_moves": false,
-    "print_interval_info": false
+    "print_interval_info": false,
+    "update_servos_json": true
 }

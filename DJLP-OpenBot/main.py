@@ -55,7 +55,6 @@ def print_servo_pos_data(all_servos,ROBOT_OBJ):
     for s in ROBOT_OBJ.servos_dict:
         s_dict = ROBOT_OBJ.servos_dict[s]
         print("{:<25}|SERVO|{:<3} --- POS|{}".format("ROBOT.servos_dict",s_dict['name'],s_dict['pos']))
-        
 def timeline_tick(timeline,ROBOT_OBJ,t_dur_scale):
     global end_loop
     for keyframe in timeline:
@@ -72,7 +71,18 @@ def timeline_tick(timeline,ROBOT_OBJ,t_dur_scale):
                 keyframe['done'] = True
 def print_servo_status(servo):
     println("| < {:<1} > [P{:<3}] [D{:<3}] |".format(servo.get_name,round(servo.get_pos),round(servo.get_duty)))
-                
+def interval_info(print_interval):
+    if ROBOT.tt.has_passed(print_interval) is True:
+        #print("{} seconds passed on this tick!".format(print_interval))
+        println(ROBOT.tt.s_elapsed)
+        lag = float()
+        lag = round(ROBOT.tt.t_pass_dur - print_interval,6)
+        println("LAG: {:<9}".format(lag))
+        for joint in ROBOT.joints:
+            _joint = ROBOT.joints[joint]
+            print_servo_status(_joint.get_hw)
+        print()
+        
 ''' -- VARIABLE DEFINITONS -- '''
 settings = json.load(open('settings.json'))
 servos_json_filename = settings['servo_json_filename']
@@ -81,6 +91,7 @@ dur_scale = settings['dur_scale'] # normal duration is 0.25
 pause_scale = settings['pause_scale']
 print_moves = settings['print_moves']
 print_interval_info = settings['print_interval_info']
+s_update_servos_json = settings['update_servos_json']
 if print_moves is True:
     print("[ WARNING!!! ] print_moves is enabled in settings!")
     print("[ ---------- ] THIS CAN RESULT IN INCORRECT SYNC TIMING!!!")
@@ -120,7 +131,7 @@ class Robot:
                 else:
                     if print_moves is True:
                         println(ROBOT.tt.s_elapsed)
-                    ROBOT.joints[joint].movement.run()
+                    ROBOT.joints[joint].movement.run(update_servos_json=s_update_servos_json)
                     any_moves = True
         if any_moves is True and print_moves is True:
             print()
@@ -142,7 +153,9 @@ class Robot:
                 if ROBOT.joints[joint].synced is False:
                     at_pos = False
         print("sync finished!")
-                    
+        if s_update_servos_json is True:
+            ROBOT.update_json(servos_json_filename)
+            
     def home(self,joints,hardhome=False):
         for joint in joints:
             joint = joints[joint]
@@ -169,7 +182,7 @@ class Robot:
             )
         if automove is True:
             ROBOT_OBJ.syncloop()
-            
+        
 ''' -- HARDWARE CLASS DEFINITIONS -- '''
 class Hardware:
     def __init__(self,is_physical):
@@ -236,7 +249,7 @@ class Hardware:
                 if print_break is True: print()
             def calc(self):
                 pass # for recalculation during movement, perhaps better to set a reducing attribute of self in main loop or in run?
-            def run(self,print_status=False,print_complete=True,print_break=False): # ss is step scale
+            def run(self,update_servos_json=True,print_status=False,print_complete=True,print_break=False): # ss is step scale
                 if self.get_steps_remaining > 0:
                     # do stuff to move servos
                     if self.get_before_pos == self.get_after_pos:
@@ -328,7 +341,26 @@ class TimeElapsedTracker:
             return(False)
             # return true
             # set new t_first
-
+class Button:
+    def __init__(self,pin):
+        self.pin = machine.Pin(pin, machine.Pin.IN, machine.Pin.PULL_UP)
+        self.read_state = self.pin.value
+        self.state = self.read_state()
+        self.last_state = self.read_state()
+    def read(self,loop=True):
+        self.state = self.read_state() # store read state
+        if self.last_state == False and self.state == True:
+            print('Button released!')
+        elif self.last_state == True and self.state == False:
+            print('Button pressed!')
+        else:
+            pass
+            #print("Something went terribly wrong...")
+        self.last_state = self.state # set current state for future comparison
+        if self.state == 1: return(False)
+        elif self.state == 0: return(True)
+        else: raise Exception("button state isn't 0 or 1. Was MicroPython updated?")
+        
 # ---- MAIN SETUP ----
 tt = TimeElapsedTracker()
 ROBOT = Robot("ROBOT",tt) # create the robot object
@@ -363,6 +395,11 @@ s_b = ROBOT.joints['B'].get_hw
 s_c = ROBOT.joints['C'].get_hw
 s_d = ROBOT.joints['D'].get_hw
 all_servos = [s_a,s_b,s_c,s_d]
+# timeline
+timeline = json.load(open(timeline_name))
+# LEDs
+toggle_led = machine.Pin(14,machine.Pin.OUT)
+loop_led = machine.Pin(12,machine.Pin.OUT)
 
 #---primary loop---#
 def main():
@@ -372,28 +409,27 @@ def main():
     global end_loop
     timeline_tick(timeline,ROBOT,dur_scale)
     ROBOT.sync() # update all hardwares such as servos (pass on time_tracker)
+    button_val = button.read()
+    if button_val is True:
+        toggle_led.value(True)
+        while button.read() is True:
+            pass
+    elif button_val is False:
+        toggle_led.value(False)
     if print_interval_info is True:
-        print_interval = 0.5
-        if ROBOT.tt.has_passed(print_interval) is True:
-            #print("{} seconds passed on this tick!".format(print_interval))
-            println(ROBOT.tt.s_elapsed)
-            lag = float()
-            lag = round(ROBOT.tt.t_pass_dur - print_interval,6)
-            println("LAG: {:<9}".format(lag))
-            for joint in ROBOT.joints:
-                _joint = ROBOT.joints[joint]
-                print_servo_status(_joint.get_hw)
-            print()
-            
+        interval_info(0.5)
+        
 ###### START 'ER UP!!! ######
 print("THIS SHOULD ALWAYS BE THE FIRST THING TO PRINT!!!")
 
 ROBOT.tt.begin()
 
-timeline = json.load(open(timeline_name))
 
 end_loop = False
+button = Button(32)
+loop_led.value(1)
 while not end_loop: main()
+loop_led.value(0)
 
 ROBOT.tt.stop
 
