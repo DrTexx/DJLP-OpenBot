@@ -1,0 +1,19 @@
+    '''
+    if ROBOT.tt.elapsed > 5*dur_scale:
+        end_loop = True # exit if time elapsed > 10
+    elif ROBOT.tt.elapsed > 4*dur_scale and m4_sent is False:
+        ROBOT.home(ROBOT.joints)
+        m4_sent = True
+    elif ROBOT.tt.elapsed > 3*dur_scale and m3_sent is False:
+        ROBOT.set_joints({'A': 90,'B': 90,'C': 90,'D': 90})
+        m3_sent = True
+    elif ROBOT.tt.elapsed > 2*dur_scale and m2_sent is False:
+        ROBOT.set_joints({'A': 150,'B': 70,'C': 20,'D': 170})
+        m2_sent = True
+    elif ROBOT.tt.elapsed > 1*dur_scale and m1_sent is False:
+        ROBOT.set_joints({'A': 0,'B': 120,'C': 0,'D': 180})
+        m1_sent = True
+    elif ROBOT.tt.elapsed > 0 and move0_sent is False:
+        ROBOT.home(ROBOT.joints)
+        move0_sent = True
+    '''

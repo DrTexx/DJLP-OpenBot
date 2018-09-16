@@ -1,0 +1,36 @@
+[
+    {
+        "wait_until": 0,
+        "action": "move",
+        "positions": {"A": 90, "B": 90, "C": 90, "D": 90},
+        "done": false
+    },
+    {
+        "wait_until": 2,
+        "action": "move",
+        "positions": {"A": 0, "B": 120, "C": 160, "D": 180},
+        "done": false
+    },
+    {
+        "wait_until": 4,
+        "action": "move",
+        "positions": {"A": 150,"B": 70,"C": 50,"D": 170},
+        "done": false
+    },
+    {
+        "wait_until": 6,
+        "action": "move",
+        "positions": {"A": 90, "B": 90, "C": 90, "D": 90},
+        "done": false
+    },
+    {
+        "wait_until": 8,
+        "action": "home",
+        "done": false
+    },
+    {
+        "wait_until": 10,
+        "action": "exit",
+        "done": false
+    }
+]
