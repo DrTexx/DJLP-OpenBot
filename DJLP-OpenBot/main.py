@@ -18,6 +18,24 @@ ROBOT = Robot( # create a new robot with the following properties
 
 DebugTools.Printing.object(ROBOT) # print information about the robot object
 
+ROBOT.start_sync(delay=1,interval=0.0001) # start a new movement sync thread
+time.sleep(2)
+ROBOT.set_joints({"A": 70,
+                  "B": 70,
+                  "C": 70,
+                  "D": 70})
+time.sleep(2)
+ROBOT.set_joints({"A": 120,
+                  "B": 120,
+                  "C": 120,
+                  "D": 120})
+time.sleep(2)
+ROBOT.home(ROBOT.joints)
+time.sleep(2)
+ROBOT.end_sync()
+
+print("script ending")
+
 #ROBOT_joints = {}
 #for key in ['A','B','C','D']:
 #    ROBOT_joints[key] = Robot.Joint(key,hardware.servos[key])

@@ -4,12 +4,12 @@ import time
 val1 = 1
 val2 = 1
 
-def th_func_add(delay, id):
+def th_func_add(delay, t_id):
     global val1
     while True:
         time.sleep(delay)
         val1 = val1 + 1
-def th_func_mult(delay, id):
+def th_func_mult(delay, t_id):
     global val2
     while True:
         time.sleep(delay)

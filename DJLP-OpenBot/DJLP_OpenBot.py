@@ -7,7 +7,7 @@ try: import dbi; dbi_present = True
 except: dbi_present = False
 try: import json; json_present = True
 except: json_present = False
-if dbi_present and json_present: db = json.load(open('data/db.json'))
+#if dbi_present and json_present: db = json.load(open('data/db.json'))
 ''' -- LOAD VARIABLES -- '''
 robot_move_duration = 1 # normal duration is 1s
 settings = json.load(open('settings.json'))
@@ -115,8 +115,57 @@ class Robot:
         self.joints = joints
         self.leds = leds
         self.positions = positions
+        self.threads = {}
         # actions
         self.tt.begin() # start time tracker
+        # imports
+        try: import _thread
+        except: raise Exception("can't import _thread!")
+        import time
+    def start_sync(self,delay=1,interval=0.00001,debug=True):
+        # DEFINITIONS
+        def sync(delay,interval,debug=True):
+            time.sleep(delay)
+            #any_moves = False
+            while True: # loop until broken
+                if ('sync' in self.threads) is True:
+                    if self.threads['sync']['close'] is True:
+                        break
+                    else:
+                        time.sleep(interval)
+                        for j in self.joints: # for each of the robot's joints
+                            if hasattr(self.joints[j], 'movement'): # if the joint has a movement attribute
+                                j_move = self.joints[j].movement # (shorter code)
+                                if j_move.done is True: # if the movement is finished
+                                    del j_move # delete the movement attribute
+                                else: # if the movement isn't finished
+                                    #if debug is True: println(ROBOT.tt.s_elapsed)
+                                    j_move.step() # run one tick step of movement
+                                    #any_moves = True
+                        #if any_moves is True and debug is True: print()
+                else:
+                    if debug is True: print("Robot|{}: sync thread missing from robot".format(self.name))
+                    break
+        # CODE
+        if debug is True: print("Robot|{}: sync | initialising...".format(self.name))
+        if 'sync' in self.threads: # if thread named "sync" already exists
+            print("Robot|{}: sync | thread already running!".format(self.name)) # say this
+        else: # if robot doesn't already have a sync thread
+            self.threads['sync'] = {"close": False} # create an entry for sync thread in threads
+            _thread.start_new_thread(sync, (delay,interval)) # start the thread itself
+            if debug is True: print("Robot|{}: sync | thread started".format(self.name))
+    def end_sync(self,debug=True):
+        self.threads['sync']['close'] = True # send close signal to sync thread
+        if debug is True: print("Robot|{}: sync | close thread signal sent...".format(self.name))
+        if debug is True: print("Robot|{}: sync | threads: {}".format(self.name,self.threads))
+        del self.threads['sync'] # delete sync thread
+        if 'sync' not in self.threads:
+            if debug is True: print("Robot|{}: sync | thread closed successfully".format(self.name))
+        else:
+            if debug is True:
+                print("Robot|{}: sync | THREAD WASN'T DELETED!".format(self.name))
+                print("Robot|{}: sync | threads: {}".format(self.name,self.threads))
+            raise Exception("sync thread couldn't be closed")
     class Joint:
         def __init__(self,name,hardware):
             self.get_name = name
@@ -125,43 +174,26 @@ class Robot:
         def __init__(self,joints):
             for joint in joints:
                 pass # TODO: make this work
-    def sync(self):
-        # TODO: make move_duration_override have an effect on all movements
-        #print("syncing...",end=" ")
-        any_moves = False
-        for joint in ROBOT.joints:
-            if hasattr(ROBOT.joints[joint], 'movement'): # if this joint has a movement attribute
-                this_move = ROBOT.joints[joint].movement
-                if this_move.done is True:
-                    del ROBOT.joints[joint].movement
-                else:
-                    if print_moves is True:
-                        println(ROBOT.tt.s_elapsed)
-                    ROBOT.joints[joint].movement.run(update_servos_json=s_update_servos_json)
-                    any_moves = True
-        if any_moves is True and print_moves is True:
-            print()
-    def syncloop(self):
-        for joint in ROBOT.joints:
-            ROBOT.joints[joint].synced = False
-        at_pos = False
-        while at_pos is False:
-            self.sync()
-            for joint in ROBOT.joints:
-                _joint = ROBOT.joints[joint]
-                if hasattr(_joint,'movement'):
-                    print("['{}'] is still moving...".format(_joint.get_name))
-                else:
-                    #print("['{}'] has no movement attribute!".format(_joint.get_name))
-                    _joint.synced = True
-            at_pos = True
-            for joint in ROBOT.joints:
-                if ROBOT.joints[joint].synced is False:
-                    at_pos = False
-        print("sync finished!")
-        if s_update_servos_json is True:
-            ROBOT.update_json(servos_json_filename)
-            
+    #def syncloop(self):
+    #    for joint in ROBOT.joints:
+    #        ROBOT.joints[joint].synced = False
+    #    at_pos = False
+    #    while at_pos is False:
+    #        self.sync()
+    #        for joint in ROBOT.joints:
+    #            _joint = ROBOT.joints[joint]
+    #            if hasattr(_joint,'movement'):
+    #                print("['{}'] is still moving...".format(_joint.get_name))
+    #            else:
+    #                #print("['{}'] has no movement attribute!".format(_joint.get_name))
+    #                _joint.synced = True
+    #        at_pos = True
+    #        for joint in ROBOT.joints:
+    #            if ROBOT.joints[joint].synced is False:
+    #                at_pos = False
+    #    print("sync finished!")
+    #    if s_update_servos_json is True:
+    #        ROBOT.update_json(servos_json_filename)
     def home(self,joints,hardhome=False):
         for joint in joints:
             joint = joints[joint]
@@ -183,15 +215,15 @@ class Robot:
         with open(json_filename,'w') as f:
             if hardware.is_physical: json.dump(self.servos_dict, f)
             else: json.dump(self.servos_dict, f, indent = 4,ensure_ascii = False)
-    def set_joints(self,ROBOT_OBJ,positions,automove=True):
-        for item in positions:
-            ROBOT_OBJ.joints[item].movement = ROBOT_OBJ.joints[item].get_hw.NewMovement(
-                ROBOT.move_duration*dur_scale,
-                positions[item],
-                ROBOT_OBJ.joints[item].get_hw
+    def set_joints(self,joint_pos_dict):
+        for joint_pos in joint_pos_dict: # for each joint
+            j = self.joints[joint_pos] # set the joint to the dict key
+            pos = joint_pos_dict[joint_pos] # set the pos to the key's value
+            j.movement = j.get_hw.NewMovement( # create a new movement for the joint
+                self.move_duration, # use the robot's move_duration attribute for move duration
+                pos, # use the pos defined in joint_pos_dict
+                j.get_hw # use the joint defined by j
             )
-        if automove is True:
-            ROBOT_OBJ.syncloop()
         
 ''' -- HARDWARE CLASS DEFINITIONS -- '''
 class Hardware:
@@ -269,7 +301,7 @@ class Hardware:
                 if print_break is True: print()
             def calc(self):
                 pass # for recalculation during movement, perhaps better to set a reducing attribute of self in main loop or in run?
-            def run(self,update_servos_json=True,print_status=False,print_complete=True,print_break=False): # ss is step scale
+            def step(self,update_servos_json=True,print_status=False,print_complete=True,print_break=False): # ss is step scale
                 if self.get_steps_remaining > 0:
                     # do stuff to move servos
                     if self.get_before_pos == self.get_after_pos:
@@ -343,12 +375,13 @@ class TimeElapsedTracker:
         self.start = time.time()
         self.t_first = float(0)
         self.elapsed = float(0)
+        self.s_elapsed = ''
     def check(self,print_elapsed=False):
         try:
             self.elapsed = time.time() - self.start
+            self.s_elapsed = "[{:<7}]".format(round(self.elapsed,4))
         except:
             raise Exception("error checking time. Ensure you ran '.begin()' first")
-        self.s_elapsed = "[{:<7}]".format(round(self.elapsed,4))
         if print_elapsed: println(self.s_elapsed)
         return(self.elapsed)
     def stop(self):
