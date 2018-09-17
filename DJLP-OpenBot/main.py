@@ -61,7 +61,7 @@ def timeline_tick(timeline,ROBOT_OBJ,t_dur_scale):
         if keyframe['done'] is False:
             if keyframe['wait_until']*t_dur_scale < ROBOT_OBJ.tt.elapsed:
                 if keyframe['action'] == 'move':
-                    ROBOT_OBJ.set_joints(ROBOT_OBJ,keyframe['positions'],t_dur_scale,automove=False)
+                    ROBOT_OBJ.set_joints(ROBOT_OBJ,keyframe['positions'],automove=False)
                 elif keyframe['action'] == "exit":
                     end_loop = True # exit loop if prior conditions true
                 elif keyframe['action'] == "home":
@@ -84,10 +84,11 @@ def interval_info(print_interval):
         print()
         
 ''' -- VARIABLE DEFINITONS -- '''
+robot_move_duration = 1 # normal duration is 1s
 settings = json.load(open('settings.json'))
 servos_json_filename = settings['servo_json_filename']
 timeline_name = settings['timeline_filename']
-dur_scale = settings['dur_scale'] # normal duration is 0.25
+dur_scale = settings['dur_scale'] 
 pause_scale = settings['pause_scale']
 print_moves = settings['print_moves']
 print_interval_info = settings['print_interval_info']
@@ -163,7 +164,11 @@ class Robot:
                 new_pos = joint.get_hw.get_hard_home
             else:
                 new_pos = joint.get_hw.get_home_pos
-            joint.movement = joint.get_hw.NewMovement(self.move_duration,new_pos,joint.get_hw)
+            joint.movement = joint.get_hw.NewMovement(
+                ROBOT.move_duration*dur_scale,
+                new_pos,
+                joint.get_hw
+            )
     def update_json(self,json_filename):
         for servo in hardware.servos:
             _servo = hardware.servos[servo]
@@ -173,10 +178,10 @@ class Robot:
         with open(json_filename,'w') as f:
             if hardware.is_physical: json.dump(self.servos_dict, f)
             else: json.dump(self.servos_dict, f, indent = 4,ensure_ascii = False)
-    def set_joints(self,ROBOT_OBJ,positions,t_dur_scale,automove=True):
+    def set_joints(self,ROBOT_OBJ,positions,automove=True):
         for item in positions:
             ROBOT_OBJ.joints[item].movement = ROBOT_OBJ.joints[item].get_hw.NewMovement(
-                ROBOT_OBJ.move_duration*t_dur_scale,
+                ROBOT.move_duration*dur_scale,
                 positions[item],
                 ROBOT_OBJ.joints[item].get_hw
             )
@@ -363,7 +368,7 @@ class Button:
         
 # ---- MAIN SETUP ----
 tt = TimeElapsedTracker()
-ROBOT = Robot("ROBOT",tt) # create the robot object
+ROBOT = Robot("ROBOT",tt,move_duration=robot_move_duration) # create the robot object
 # define physical hardware
 hardware = Hardware(is_physical) # set hardware as physical or code simulated
 # load servos stored in json into hardware object as well as a robot's servo_dict
@@ -398,40 +403,37 @@ all_servos = [s_a,s_b,s_c,s_d]
 # timeline
 timeline = json.load(open(timeline_name))
 # LEDs
-toggle_led = machine.Pin(14,machine.Pin.OUT)
-loop_led = machine.Pin(12,machine.Pin.OUT)
+if hardware.is_physical is True:
+    toggle_led = machine.Pin(14,machine.Pin.OUT)
+    loop_led = machine.Pin(12,machine.Pin.OUT)
+    button = Button(32)
 
 #---primary loop---#
 def main():
     #println("✓")
-    ROBOT.tt.check(print_elapsed=False) # set and print time elapsed
+    ROBOT.tt.check(print_elapsed=False) # set time elapsed    
     global timeline
     global end_loop
     timeline_tick(timeline,ROBOT,dur_scale)
-    ROBOT.sync() # update all hardwares such as servos (pass on time_tracker)
     button_val = button.read()
     if button_val is True:
         toggle_led.value(True)
-        while button.read() is True:
-            pass
+        pass
     elif button_val is False:
         toggle_led.value(False)
+        ROBOT.sync() # update all hardwares such as servos
     if print_interval_info is True:
         interval_info(0.5)
         
 ###### START 'ER UP!!! ######
 print("THIS SHOULD ALWAYS BE THE FIRST THING TO PRINT!!!")
-
-ROBOT.tt.begin()
-
-
-end_loop = False
-button = Button(32)
-loop_led.value(1)
-while not end_loop: main()
-loop_led.value(0)
-
-ROBOT.tt.stop
+loop_led.value(1) # enable loop led
+ROBOT.tt.begin() # start tracking time
+end_loop = False # make loop ending condition False
+while end_loop is not True: main() # loop main() until end_loop is True
+toggle_led.value(0) # disable toggle led
+loop_led.value(0) # disable lood led
+ROBOT.tt.stop # stop tracking time
 
 print("FINAL ROBOT JOINT POSITIONS:")
 print_servo_pos_data(all_servos,ROBOT)
