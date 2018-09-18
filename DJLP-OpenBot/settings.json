@@ -1,7 +1,7 @@
 {
     "servo_json_filename": "servos.json",
     "timeline_filename": "timeline.json",
-    "dur_scale": 2,
+    "default_move_duration": 1,
     "pause_scale": 0.5,
     "print_moves": false,
     "print_interval_info": false,

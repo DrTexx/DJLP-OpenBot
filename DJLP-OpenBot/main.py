@@ -5,9 +5,8 @@ from DJLP_OpenBot import TimeElapsedTracker,Robot,Hardware,DebugTools,ThreadMana
 
 print("~~~~~~#################~~~~~~")
 ''' -- SETUP ROBOT -- '''
-hardware = Hardware(
-    buttons={"b1": Hardware.Button(12)}
-) # create hardware object
+hardware = Hardware() # create hardware object
+hardware.buttons = {"b1": Hardware().Button(12)}
 hardware.load_servos()
 ROBOT = Robot( # create a new robot with the following properties
     "ROBOT", # robot's name
@@ -20,7 +19,7 @@ ROBOT = Robot( # create a new robot with the following properties
     }
 )
 
-DebugTools.Printing.object(ROBOT) # print information about the robot object
+DebugTools.Printing().object(ROBOT) # print information about the robot object
 
 ''' -- SETUP TIMELINE -- '''
 timeline_name = 'timeline.json'
@@ -29,15 +28,23 @@ for key in range(len(timeline)):
     print(timeline[key])
 
 ''' -- PRIMARY EXECUTIONS -- '''
-ROBOT.start_sync(delay=1,interval=0.0001) # start a new movement sync thread
+#ROBOT.start_sync(delay=1,interval=0.0001) # start a new movement sync thread
 
 #timeline.start()
 
-#sync_man = ThreadManager(ROBOT,ROBOT.sync())
+sync_man = ThreadManager(ROBOT, # parent object
+                         ROBOT.Sync) # function in parent object
+sync_man.start()
 
-#sync_man.start()
+time.sleep(3)
+ROBOT.set_joints({"B": 90, "C": 90, "D": 90})
+time.sleep(3)
+ROBOT.home()
+time.sleep(3)
 
+sync_man.end()
 
+'''
 time.sleep(2)
 ROBOT.set_joints({"A": 70,
                   "B": 70,
@@ -52,7 +59,7 @@ time.sleep(2)
 ROBOT.home(ROBOT.joints)
 time.sleep(2)
 ROBOT.end_sync()
-
+'''
 
 print("script ending")
 
