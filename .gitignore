@@ -3,4 +3,5 @@
 \tests
 \.*
 .*
+*\boot.py
 boot.py
