@@ -35,7 +35,7 @@ class DebugTools:
     class Printing:
         def __init__(self):
             pass
-        def object(*args):
+        def object(self,*args):
             for obj in args:
                 print("class:",obj)
                 try:
@@ -43,16 +43,26 @@ class DebugTools:
                 except:
                     print("name:","no '.name' attribute found")
                 print("attributes:",obj.__dict__)
-        def objects(obj_list):
-            for obj in obj_list:
-                print("name:",obj)
-                print("object:",obj_list[obj])
-                print("attributes:",obj_list[obj].__dict__)
-def valmap(value, in_min, in_max, out_min, out_max):
-    return ((value - in_min) * (out_max - out_min) // (in_max - in_min) + out_min)
-def state_message(state,true_message,false_message):
-    if state: print(true_message)
-    else: print(false_message)
+class DataTools:
+    def __init__(self,name="DataTools"):
+        self.name = name
+    def valmap(self,value,in_min,in_max,out_min,out_max):
+        return ((value - in_min) * (out_max - out_min) // (in_max - in_min) + out_min)
+class ThreadManager:
+    def __init__(self,parent,func):
+        self.parent = parent
+        self.func = func
+    def start(self,debug=True):
+        p = self.parent
+        f = self.func
+        p_cn = self.parent.__class__.__name__
+        if debug is True: print("{}|{}: {} | initialising...".format(p_cn,p.name,f.name))
+        if f.name in p.threads: # if thread named x already exists in parents threads
+            print("{}|{}: {} | thread already running!".format(p_cn,p.name,f.name)) # say this
+        else: # if robot doesn't already have a sync thread
+            p.threads[f.name] = {"close": False} # create an entry for sync thread in threads
+            _thread.start_new_thread(p.start(), (delay,interval)) # start the thread itself
+            if debug is True: print("{}|{}: {} | thread started".format(p_cn,p.name,f.name))
 def sublist_gen(li, cols=2):
     start = 0
     for i in range(cols):
@@ -66,7 +76,6 @@ def println(*args,brak=False):
         message = str(message)
         output_message.append(message)
     if brak: output_message.append("]")
-    
     total_message = ''.join(output_message)
     print(total_message,end=" ")
 
@@ -108,6 +117,9 @@ def interval_info(print_interval):
         print()
 ''' -- ROBOT CLASS DEFINITIONS -- '''
 class Robot:
+    class sync:
+        def __init__(self,name="sync"):
+            self.name = name
     def __init__(self,name,time_tracker,move_duration=1,servos_dict={},joints={},leds={},positions={}):
         self.name = name
         self.tt = time_tracker
@@ -227,7 +239,7 @@ class Robot:
         
 ''' -- HARDWARE CLASS DEFINITIONS -- '''
 class Hardware:
-    def __init__(self,debug=False,servos={},leds={}):
+    def __init__(self,debug=False,servos={},leds={},buttons={}):
         try: import machine; is_physical = True
         except: is_physical = False
         self.is_physical = is_physical
@@ -236,6 +248,7 @@ class Hardware:
             else: print("running as simulation")
         self.servos = servos
         self.leds = leds
+        self.buttons = buttons
     def load_servos(self,json_filename='servos.json'):
         servos_dict = json.load(open(json_filename)) # load the json file into the robot's dict
         self.servos_dict = servos_dict # add json data to hardware object
@@ -256,11 +269,12 @@ class Hardware:
             self.get_hard_home = self.servo_dict['specs']['hard_max'] / 2
             self.get_duty_min = self.servo_dict['specs']['duty_min'] # make this have an effect
             self.get_duty_max = self.servo_dict['specs']['duty_max'] # make this have an effect
-            self.get_duty = valmap(self.get_pos,
-                                   self.get_pos_min,
-                                   self.get_pos_max,
-                                   self.get_duty_min,
-                                   self.get_duty_max)
+            self.get_duty = DataTools().valmap(
+                self.get_pos,
+                self.get_pos_min,
+                self.get_pos_max,
+                self.get_duty_min,
+                self.get_duty_max)
             if (hardware.is_physical):
                 self.pin = machine.Pin(self.get_pin_num)
                 self.pwm = machine.PWM(self.pin,freq=self.get_freq)
@@ -334,7 +348,7 @@ class Hardware:
             # TODO: consider min/max values before settings
             self.get_pos = pos
             self.servo_dict['pos'] = pos # needs to be updated when changed
-            self.set_duty(valmap(self.get_pos,0,180,32,130),print_move=print_move)
+            self.set_duty(DataTools().valmap(self.get_pos,0,180,32,130),print_move=print_move)
         def set_duty(self,duty,print_move=False):
             self.get_duty = duty
             if hardware.is_physical:
@@ -366,6 +380,28 @@ class Hardware:
                 if state: self.pin_object.high()
                 else: self.pin_object.low()
             print("{}.state = {}".format(self.name,self.get_state))
+    class Button:
+        def __init__(self,pin):
+            if hardware.is_physical is True:
+                self.pin = machine.Pin(pin, machine.Pin.IN, machine.Pin.PULL_UP)
+                self.read_state = self.pin.value
+                self.state = self.read_state()
+                self.last_state = self.read_state()
+        def read(self,loop=True):
+            self.state = self.read_state() # store read state
+            if self.last_state == False and self.state == True:
+                print('Button released!')
+            elif self.last_state == True and self.state == False:
+                print('Button pressed!')
+            else:
+                pass
+                #print("Something went terribly wrong...")
+            self.last_state = self.state # set current state for future comparison
+            if self.state == 1: return(False)
+            elif self.state == 0: return(True)
+            else: raise Exception("button state isn't 0 or 1. Was MicroPython updated?")
+        def start_read(self,var_to_change):
+            pass # TODO
             
 ''' -- MISC CLASS DEFINITIONS -- '''
 class TimeElapsedTracker:
@@ -397,25 +433,6 @@ class TimeElapsedTracker:
             return(False)
             # return true
             # set new t_first
-class Button:
-    def __init__(self,pin):
-        self.pin = machine.Pin(pin, machine.Pin.IN, machine.Pin.PULL_UP)
-        self.read_state = self.pin.value
-        self.state = self.read_state()
-        self.last_state = self.read_state()
-    def read(self,loop=True):
-        self.state = self.read_state() # store read state
-        if self.last_state == False and self.state == True:
-            print('Button released!')
-        elif self.last_state == True and self.state == False:
-            print('Button pressed!')
-        else:
-            pass
-            #print("Something went terribly wrong...")
-        self.last_state = self.state # set current state for future comparison
-        if self.state == 1: return(False)
-        elif self.state == 0: return(True)
-        else: raise Exception("button state isn't 0 or 1. Was MicroPython updated?")
         
 # ---- MAIN SETUP ----
 tt = TimeElapsedTracker()

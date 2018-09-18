@@ -5,7 +5,8 @@
 import network
 station = network.WLAN(network.STA_IF)
 station.active(True)
-station.connect("painintheass","meatkaneira")
+#station.connect("painintheass","meatkaneira")
+station.connect("cchs","hackmelb")
 station.isconnected()
 station.ifconfig()
 
