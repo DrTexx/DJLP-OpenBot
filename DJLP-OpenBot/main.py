@@ -15,9 +15,10 @@ dependency_test(['json'])
 ''' -- INITIALIZE MANAGERS -- '''
 hwm = HardwareMan() # initialize hardware manager
 ''' -- START MANAGERS -- '''
-hwm.start()
+hwm.start() # start hardware manager
+hwm.start() # start hardware manager
 ''' -- PRINT MANAGER STATUSES -- '''
-hwm.status()
+hwm.status() # printer hardware manager's status
 
 ''' -- START SETTING IT ALL UP -- '''
 print("~~~~~~#################~~~~~~")
