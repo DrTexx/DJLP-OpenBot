@@ -3,12 +3,20 @@ import time
 import _thread
 try: import machine; is_physical = True
 except: is_physical = False
-try: import dbi; dbi_present = True
-except: dbi_present = False
+#try: import dbi; dbi_present = True
+#except: dbi_present = False
 try: import json; json_present = True
 except: json_present = False
 #if dbi_present and json_present: db = json.load(open('data/db.json'))
 ''' -- LOAD VARIABLES -- '''
+if is_physical is True:
+    def time_now():
+        return(time.ticks_us())
+else:
+    def time_now():
+        out = time.time()
+        out = (out*1000)*1000
+        return(out)
 robot_move_duration = 1 # normal duration is 1s
 settings = json.load(open('settings.json'))
 servos_json_filename = settings['servo_json_filename']
@@ -181,8 +189,9 @@ class Robot:
         self.tt.begin() # start time tracker
     class Joint:
         def __init__(self,name,specific_hardware):
-            self.get_name = name
+            self.name = name
             self.get_hw = specific_hardware
+            self.isactive = True
     class NewPosition:
         def __init__(self,joints):
             for joint in joints:
@@ -228,64 +237,70 @@ class Hardware:
                 def __init__(self,time_tracker,time_between_steps):
                     self.tt = time_tracker
                     self.time_between_steps = time_between_steps
-                def allowstepnow(self,debug=False):
+                def allowstepnow(self,debug=True):
                     if hasattr(self, 'last_request') is False: # is this is the first request
                         if debug is True: print("first request. allowing")
-                        self.last_request = time.time() # set the last request to now
+                        self.last_request = time_now() # set the last request to now
                         return(True) # allow a step
                     else:
-                        if debug is True: print("first request",end=" ")
+                        if debug is True: print("not first request",end=" ")
                         last = self.last_request
-                        now = time.time()
+                        now = time_now()
                         passed = now - last
                         if passed > self.time_between_steps: # if a step's worth of time has passed
                             if debug is True: print("enough passed | {} > {}".format(passed,self.time_between_steps))
-                            self.last_request = time.time()
+                            self.last_request = time_now()
                             return(True)
                         else:
                             return(False)
             def __init__(self,time_tracker,move_duration,after_pos,hardware,print_status=True,print_break=True):
                 #TODO: complete this
+                println("duration: ",move_duration,brak=True)
                 if print_status is True: println(time_tracker.s_elapsed)
                 self.done = False
-                self.move_duration = move_duration
-                self.get_before_pos = hardware.get_pos
-                self.get_during_pos = hardware.get_pos
-                self.get_after_pos = after_pos
-                self.get_dist_from_pos = after_pos - self.get_before_pos #TODO: check this is correct
                 self.get_hw = hardware
-                self.get_before_time = time.time()
-                self.get_after_time = time.time() + self.move_duration
-                self.get_time_remaining = self.get_after_time - self.get_before_time
+                self.pos_start = hardware.get_pos
+                self.pos_end = after_pos
+                self.move_duration = move_duration
+                self.time_remaining = move_duration
+                self.time_start = time_now()
+                print(self.time_start)
+                self.time_end = self.time_start + move_duration
+                print(self.time_end - self.time_start)
                 # CALCULATIONS (run once per movement created)
+                println("time_end:",self.time_end,brak=True)
                 if print_status is True: print("~CALCULATING NEW MOVEMENT!~",end=" ")
-                self.get_duration_time = self.get_after_time - self.get_before_time # during movement: no change
+                self.pos_now = self.pos_start
+                self.get_dist_from_pos = abs(self.pos_end - self.pos_start) #TODO: check this is correct
+                self.get_time_remaining = move_duration
+                println("time remaining:",self.get_time_remaining,brak=True)
                 # total number of ticks required to reach target by x seconds (dependent on servo's step time)
-                self.get_total_steps = self.get_duration_time//self.get_hw.get_step_time # total number of steps taken from target A to target B
+                self.get_total_steps = self.move_duration//self.get_hw.get_step_time # total number of steps taken from target A to target B
+                println("total step count: ",self.get_total_steps,brak=True)
                 # set how many step are left to take
                 self.get_steps_remaining = self.get_total_steps # decrease this every tick! (CHANGES!)
+                println("set steps remaining: ",self.get_steps_remaining,brak=True)
                 # set how much time is left
-                self.get_time_remaining = self.get_duration_time
+                self.get_time_remaining = self.move_duration
+                println("set time remaining: ",self.get_time_remaining,brak=True)
                 # used for outputting to terminal, shouldn't be used in loops!!!
-                self.get_target_dist = abs(self.get_hw.get_pos - self.get_after_pos) # distance from the target relative to current position
+                self.get_target_dist = abs(self.get_hw.get_pos - self.pos_end) # distance from the target relative to current position
+                println("target_dist: ",self.get_target_dist,brak=True)
                 self.get_dist_per_step = self.get_target_dist / self.get_total_steps # distance per step
+                println("dist_per_step: ",self.get_dist_per_step,brak=True)
                 # time between each step should be servos step time, so motion as smooth as possible
                 self.get_time_per_step = self.get_hw.get_step_time
+                print("time per step",self.get_time_per_step)
                 self.step_manager = self.StepManager(time_tracker,self.get_time_per_step)
-                println("duration: ",self.get_duration_time,brak=True)
-                println("total step count: ",self.get_total_steps,brak=True)
-                println("set steps remaining: ",self.get_steps_remaining,brak=True)
-                println("set time remaining: ",self.get_time_remaining,brak=True)
-                println("target_dist: ",self.get_target_dist,brak=True)
-                println("dist_per_step: ",self.get_dist_per_step,brak=True)
+                print("step_manager",self.step_manager)
                 if print_break is True: print()
             def calc(self):
                 pass # for recalculation during movement, perhaps better to set a reducing attribute of self in main loop or in run?
             def step(self,update_servos_json=True,print_status=True,print_complete=True,print_break=False): # ss is step scale
                 step_r = self.get_steps_remaining
-                before = self.get_before_pos
+                before = self.pos_start
                 now = self.get_hw.get_pos
-                after = self.get_after_pos
+                after = self.pos_end
                 dps = self.get_dist_per_step
                 if step_r > 0: # if there are steps remaining
                     if before == after: # if the position matches it's target
@@ -300,11 +315,12 @@ class Hardware:
                         self.get_hw.set_pos(new_pos) # set the new position
                     # increment values needed for tracking
                     self.get_steps_remaining -= (1) # remove 1 from steps remaining (for determining when to stop)
-                    self.get_time_remaining = self.get_after_time - time.time() # remove 1 from steps remaining (for determining when to stop)
-                    if print_status is True: println("step-left:{:<5} | time-left:{:<5}".format(self.get_steps_remaining,self.get_time_remaining),brak=True)
+                    self.time_remaining = self.time_end - time_now()
+                    if print_status is True: println("step-left:{:<5} | time-left:{:<5}".format(self.get_steps_remaining,self.time_remaining),brak=True)
+                    if print_status is True: println("pos = {}".format(self.get_hw.get_pos))
                 else: # if there are no steps remaining
                     self.get_time_remaining = 0
-                    self.get_hw.set_pos(self.get_after_pos,print_move=False) # ensure servo at position (TODO: check this doesn't cause issues)
+                    self.get_hw.set_pos(self.pos_end,print_move=False) # ensure servo at position (TODO: check this doesn't cause issues)
                     # delete the movement attribute
                     self.done = True
                     if print_complete is True:
@@ -334,9 +350,12 @@ class Hardware:
                 self.pwm = machine.PWM(self.pin,freq=self.get_freq)
         def set_pos(self,pos,print_move=print_moves):
             # TODO: consider min/max values before settings
-            self.get_pos = pos
-            self.servo_dict['pos'] = pos # needs to be updated when changed
-            self.set_duty(DataTools().valmap(self.get_pos,0,180,32,130),print_move=print_move)
+            if pos == 'home':
+                self.get_pos = self.get_home_pos
+            else:
+                self.get_pos = pos
+            self.servo_dict['pos'] = self.get_pos # needs to be updated when changed
+            self.set_duty(DataTools().valmap(self.get_pos,self.get_pos_min,self.get_pos_max,self.get_duty_min,self.get_duty_max),print_move=print_move)
         def set_duty(self,duty,print_move=False):
             self.get_duty = duty
             if hardware.is_physical is True:
@@ -410,22 +429,22 @@ class Hardware:
 ''' -- MISC CLASS DEFINITIONS -- '''
 class TimeElapsedTracker:
     def __init__(self):
-        self.script_started = time.time()
+        self.script_started = time_now()
     def begin(self):
-        self.start = time.time()
+        self.start = time_now()
         self.t_first = float(0)
         self.elapsed = float(0)
         self.s_elapsed = ''
     def check(self,print_elapsed=False):
         try:
-            self.elapsed = time.time() - self.start
+            self.elapsed = time_now() - self.start
             self.s_elapsed = "[{:<7}]".format(round(self.elapsed,4))
         except:
             raise Exception("error checking time. Ensure you ran '.begin()' first")
         if print_elapsed: println(self.s_elapsed)
         return(self.elapsed)
     def stop(self):
-        self.end = time.time()
+        self.end = time_now()
         self.elapsed = self.end - self.start
         return(self.elapsed)
     def has_passed(self,duration):
@@ -443,14 +462,6 @@ hardware = Hardware(is_physical) # set hardware as physical or code simulated
 #tt = TimeElapsedTracker()
 #ROBOT = Robot("ROBOT",tt,move_duration=robot_move_duration) # create the robot object
 # define physical hardware
-# load servos stored in json into hardware object as well as a robot's servo_dict
-'''
-load_servos_from_json(servos_json_filename,ROBOT)
-'''
-# print data for each servo object found in hardware
-'''
-print_obj_list(hardware.servos)
-'''
 # print ROBOT.servos_dict (local copy of json file)
 '''
 print("ROBOT.servos_dict")

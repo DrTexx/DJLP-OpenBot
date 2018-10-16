@@ -6,7 +6,7 @@
         "pos_home": 90,
         "specs": {
             "freq": 50,
-            "step_time": 0.02,
+            "step_time": 20000,
             "hard_min": 0,
             "hard_max": 180,
             "duty_min": 32,
@@ -20,7 +20,7 @@
         "pos_home": 145,
         "specs": {
             "freq": 50,
-            "step_time": 0.02,
+            "step_time": 20000,
             "hard_min": 0,
             "hard_max": 180,
             "duty_min": 32,
@@ -34,7 +34,7 @@
         "pos_home": 30,
         "specs": {
             "freq": 50,
-            "step_time": 0.02,
+            "step_time": 20000,
             "hard_min": 0,
             "hard_max": 180,
             "duty_min": 32,
@@ -48,7 +48,7 @@
         "pos_home": 0,
         "specs": {
             "freq": 50,
-            "step_time": 0.02,
+            "step_time": 20000,
             "hard_min": 0,
             "hard_max": 180,
             "duty_min": 32,

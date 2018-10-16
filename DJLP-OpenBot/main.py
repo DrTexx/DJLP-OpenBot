@@ -2,6 +2,8 @@
 import time
 import json
 from DJLP_OpenBot import TimeElapsedTracker,Robot,Hardware,DebugTools,ThreadManager
+from jmove import jmove
+from checks import robot_checks
 
 print("~~~~~~#################~~~~~~")
 ''' -- SETUP ROBOT -- '''
@@ -18,6 +20,7 @@ ROBOT = Robot( # create a new robot with the following properties
         "D": Robot.Joint("Axis D",hardware.servos['D'])  # define joint D
     }
 )
+robot_list = {'ROBOT': ROBOT}
 
 DebugTools.Printing().object(ROBOT) # print information about the robot object
 
@@ -36,13 +39,20 @@ sync_man = ThreadManager(ROBOT, # parent object
                          ROBOT.Sync) # function in parent object
 sync_man.start()
 
-time.sleep(3)
-ROBOT.set_joints({"B": 90, "C": 90, "D": 90})
-time.sleep(3)
-ROBOT.home()
-time.sleep(3)
+result = robot_checks(robot_list,[ROBOT])
+print("result of robot checks:",result)
+jmove(ROBOT,'A',50,'B',70)
 
-sync_man.end()
+#time.sleep(3)
+#ROBOT.set_joints({"B": 90, "C": 90, "D": 90})
+#ROBOT.set_joints({"B": 90})
+#time.sleep(3)
+#ROBOT.home()
+#time.sleep(3)
+
+#sync_man.end()
+
+print("script ending")
 
 '''
 time.sleep(2)
@@ -61,7 +71,6 @@ time.sleep(2)
 ROBOT.end_sync()
 '''
 
-print("script ending")
 
 #ROBOT_joints = {}
 #for key in ['A','B','C','D']:
