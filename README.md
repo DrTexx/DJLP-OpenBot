@@ -1,3 +1,4 @@
+#### [DISCLAIMER]: *This project is undergoing some serious code changes, the following examples and/or explanations are likely not representative of future commits!*
 # DJLP-OpenBot
 An affordable, accessible, open-source project for creating your own miniature - or larger - industrial robot arm/s.
 
