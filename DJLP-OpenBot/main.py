@@ -1,10 +1,25 @@
-''' -- IMPORTS -- '''
-import time
+''' -- UTTER ESSENTIALS -- '''
+def dependency_test(package_list):
+    for package in package_list:
+        try: eval(package)
+        except: raise Exception("Failed to import a dependent package!: {}".format(package))
+''' -- IMPORT DEPENDENCIES -- '''
 import json
+''' -- IMPORT ESSENTIALS -- '''
+from DJLPmanagers import *
 from DJLP_OpenBot import TimeElapsedTracker,Robot,Hardware,DebugTools,ThreadManager
 from jmove import jmove
-from checks import robot_checks
+from checks import robot_checks # TODO: make this a method of the Robot class
+''' -- TEST NOTHING WENT TERRIBLY WRONG -- '''
+dependency_test(['json'])
+''' -- INITIALIZE MANAGERS -- '''
+hwm = HardwareMan() # initialize hardware manager
+''' -- START MANAGERS -- '''
+hwm.start()
+''' -- PRINT MANAGER STATUSES -- '''
+hwm.status()
 
+''' -- START SETTING IT ALL UP -- '''
 print("~~~~~~#################~~~~~~")
 ''' -- SETUP ROBOT -- '''
 hardware = Hardware() # create hardware object
@@ -42,6 +57,7 @@ sync_man.start()
 result = robot_checks(robot_list,[ROBOT])
 print("result of robot checks:",result)
 jmove(ROBOT,'A',50,'B',70)
+hwm.status()
 
 #time.sleep(3)
 #ROBOT.set_joints({"B": 90, "C": 90, "D": 90})
