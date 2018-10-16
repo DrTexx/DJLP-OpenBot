@@ -14,11 +14,8 @@ def angle_type_test(arg):
 def joint_on_robot(arg,rob_obj):
     if arg in rob_obj.joints: return(True)
     else: return(False)
-def joint_is_active(arg,rob_obj):
-    return(rob_obj.joints[arg].isactive)
-def gen_sublist_n_items(my_list,n):
-    # credit to https://stackoverflow.com/a/15890829
-    return([my_list[x:x+n] for x in range(0, len(my_list),n)])
+def joint_is_active(arg,rob_obj): return(rob_obj.joints[arg].isactive)
+def gen_sublist_n_items(my_list,n): return([my_list[x:x+n] for x in range(0, len(my_list),n)]) # credit to https://stackoverflow.com/a/15890829
 
 ''' MAIN PART OF JAI '''
 def jmove_interpreter(rob_obj,*args):
@@ -45,7 +42,6 @@ def jmove_interpreter(rob_obj,*args):
     return(output_pairs)
         
 def jmove(rob_obj,*args):
-    
     j_targets = jmove_interpreter(rob_obj,*args)
     for j_tar in j_targets:
         print("joint name:[{}] angle:[{}]".format(j_tar['joint'].name,j_tar['angle']))
